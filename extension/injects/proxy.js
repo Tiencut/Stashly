@@ -288,12 +288,12 @@
               if (!_[n]) return e;
               const o = _[n];
               o.sort((e, n) => e.options.order - n.options.order);
-              const r = o.find((e) => e.options.skipOthers);
-              return t(
-                r
-                  ? r.replacement(e.toString())
-                  : o.reduce((e, n) => n.replacement(e), e.toString()),
-              );
+              const r = o.find((e) => e.options.skipOthers),
+                i = e.toString(),
+                c = r
+                  ? r.replacement(i)
+                  : o.reduce((e, n) => n.replacement(e), i);
+              return c === i ? e : t(c);
             }
             function C(e, n) {
               return (
@@ -321,26 +321,150 @@
                 ),
               ),
               o.___cr(a + d, (e) => e.replace(/Error\(\w\(418\)\)/g, "void 0")),
-              o.___cr(f + d, (e) =>
-                e.replace(
-                  /,(\w+)=new\((\w+)\("relay-runtime\/mutations\/RelayRecordSourceProxy"/,
-                  ',$1=window["___rs"]=new($2("relay-runtime/mutations/RelayRecordSourceProxy"',
-                ),
-              ),
-              o.___cr(f + d, (e) =>
-                e.replace(
-                  /;(\w)\.commitPayload=function\(([\w,]+)\){/,
-                  ";$1.commitPayload=function($2){try{if(arguments[0]){if(arguments[0]?.request?.variables?.__relay_internal__pv__CometUFIReactionEnableShortNamerelayprovider === true) return;};}catch(e){console.log('relayStoreCommitPayload',e)};",
-                ),
-              ));
+              (() => {
+                const findExport = (args, pred) =>
+                  [args[4]?.exports, args[5]?.exports, args[6]].find(
+                    (c) => c && pred(c),
+                  );
+                const wrapRecordSourceProxyFactory = (exp) => {
+                  const origCreate = exp.createRelayRecordSourceProxy;
+                  if (origCreate.___stashlyWrapped) return;
+                  const wrapped = function (...cArgs) {
+                    const proxy = origCreate.apply(this, cArgs);
+                    window.___rs = proxy;
+                    return proxy;
+                  };
+                  wrapped.___stashlyWrapped = !0;
+                  exp.createRelayRecordSourceProxy = wrapped;
+                };
+                o.___gi(
+                  "relay-runtime/mutations/RelayRecordSourceProxyOptimized",
+                  (args) => {
+                    const exp = findExport(
+                      args,
+                      (c) => "function" == typeof c.createRelayRecordSourceProxy,
+                    );
+                    if (exp) wrapRecordSourceProxyFactory(exp);
+                  },
+                );
+                o.___gi(
+                  "relay-runtime/mutations/RelayRecordSourceProxy",
+                  (args) => {
+                    const wrapCtor = (Orig) => {
+                      const Proxied = new Proxy(Orig, {
+                        construct(target, cArgs, newTarget) {
+                          const inst = Reflect.construct(
+                            target,
+                            cArgs,
+                            newTarget,
+                          );
+                          window.___rs = inst;
+                          return inst;
+                        },
+                      });
+                      Proxied.___stashlyWrapped = !0;
+                      return Proxied;
+                    };
+                    if (
+                      "function" == typeof args[4]?.exports &&
+                      !args[4].exports.___stashlyWrapped
+                    ) {
+                      args[4].exports = wrapCtor(args[4].exports);
+                    } else if (
+                      "function" == typeof args[5]?.exports &&
+                      !args[5].exports.___stashlyWrapped
+                    ) {
+                      args[5].exports = wrapCtor(args[5].exports);
+                    } else if (
+                      "function" == typeof args[6]?.default &&
+                      !args[6].default.___stashlyWrapped
+                    ) {
+                      args[6].default = wrapCtor(args[6].default);
+                    }
+                  },
+                );
+                o.___gi(f, (args) => {
+                  const exp = findExport(
+                    args,
+                    (c) =>
+                      "function" == typeof c ||
+                      "function" == typeof c?.default,
+                  );
+                  const Queue = "function" == typeof exp ? exp : exp?.default;
+                  if (
+                    Queue?.prototype?.commitPayload &&
+                    !Queue.prototype.commitPayload.___stashlyWrapped
+                  ) {
+                    const origCommitPayload = Queue.prototype.commitPayload;
+                    const wrapped = function (...cpArgs) {
+                      try {
+                        if (
+                          cpArgs[0]?.request?.variables
+                            ?.__relay_internal__pv__CometUFIReactionEnableShortNamerelayprovider ===
+                          !0
+                        )
+                          return;
+                      } catch (err) {
+                        console.log("relayStoreCommitPayload", err);
+                      }
+                      return origCommitPayload.apply(this, cpArgs);
+                    };
+                    wrapped.___stashlyWrapped = !0;
+                    Queue.prototype.commitPayload = wrapped;
+                  }
+                });
+              })());
           })(window),
             ((e) => {
               if (e[Symbol.for("___sg")]) return void (e.storeFinder = e.___sf);
               e[Symbol.for("___sg")] = !0;
+              const tryReq = (id) => {
+                try {
+                  return e.___xf?.(id);
+                } catch {
+                  return void 0;
+                }
+              };
+              const r = () => {
+                if (e.___rs && "function" == typeof e.___rs.get)
+                  return e.___rs;
+                try {
+                  const source = tryReq("CometRelayEnvironment")
+                    ?.getStore?.()
+                    ?.getSource?.();
+                  if (!source) return void 0;
+                  const Mutator = tryReq(
+                      "relay-runtime/mutations/RelayRecordSourceMutator",
+                    ),
+                    RecordSource = tryReq(
+                      "relay-runtime/store/RelayRecordSource",
+                    );
+                  if (!Mutator || !RecordSource) return void 0;
+                  const mutator = new Mutator(source, RecordSource.create()),
+                    optMod = tryReq(
+                      "relay-runtime/mutations/RelayRecordSourceProxyOptimized",
+                    ),
+                    LegacyProxy = optMod?.createRelayRecordSourceProxy
+                      ? null
+                      : tryReq(
+                          "relay-runtime/mutations/RelayRecordSourceProxy",
+                        ),
+                    proxy = optMod?.createRelayRecordSourceProxy
+                      ? optMod.createRelayRecordSourceProxy(mutator)
+                      : LegacyProxy
+                        ? new LegacyProxy(mutator)
+                        : void 0;
+                  if (proxy && "function" == typeof proxy.get)
+                    return ((e.___rs = proxy), proxy);
+                } catch {}
+                return void 0;
+              };
+              e.___grs = r;
               const n = (n, t, o) => {
-                const r = e.___rs,
-                  i = "string" == typeof n ? r.get(n) : n;
-                if (void 0 === i) return i;
+                const _r = r();
+                if (!_r) return void 0;
+                const i = "string" == typeof n ? _r.get(n) : n;
+                if (null == i) return void 0;
                 let _ = d(t.replace(/\[(\d+)\]/g, ".$1")).split(".");
                 _ = _.map((e) => l(e));
                 let c = i;
@@ -399,7 +523,9 @@
                   void (e.findDirectParentArray = e.___dp)
                 );
               function n() {
-                const n = e.___rs.getRoot();
+                const rs = e.___grs?.() ?? e.___rs;
+                if (!rs) return [];
+                const n = rs.getRoot();
                 let t = [];
                 return (
                   Object.keys(n).forEach((e) => {

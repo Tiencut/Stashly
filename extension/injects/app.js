@@ -511,7 +511,7 @@
         }
         function J(e, t) {
           e.forEach((e) => {
-            if (Q(e.previousSibling) || !e.previousSibling) {
+            if (!e.previousSibling || Q(e.previousSibling)) {
               var i = document.createTextNode(k);
               (e.before(i), t && X(i));
             }
@@ -3854,25 +3854,72 @@
           };
         }
         const lt = (e) => new Promise((t) => setTimeout(t, e));
-        function dt(e, t) {
-          const i = `${t}.graphql`;
-          if (wt(i))
-            try {
-              const t = mt(i);
-              if (t && t?.params?.providedVariables) {
-                const i = Object.keys(t.params.providedVariables);
-                Object.keys(e).forEach((t) => {
-                  t.startsWith("__relay_internal") && delete e[t];
+        function queryModuleCandidates(e) {
+          return [
+            `${e}.graphql`,
+            `${e}$Parameters`,
+            `${e}_facebookRelayOperation`,
+          ];
+        }
+        function extractQueryDocId(e) {
+          if (e?.params?.id) return String(e.params.id);
+          if ("string" == typeof e && /^\d+$/.test(e)) return e;
+          return null;
+        }
+        async function loadQueryModule(e, t = 4e3) {
+          const i = window.___xf(ot)?.modulesMap?.[e];
+          if (!i) return null;
+          if (i.exports) return i.exports;
+          if ("function" == typeof window.requireLazy) {
+            const s = await new Promise((n) => {
+              let s = !1;
+              const o = setTimeout(() => {
+                s || ((s = !0), n(null));
+              }, t);
+              try {
+                window.requireLazy([e], (e) => {
+                  s || ((s = !0), clearTimeout(o), n(e ?? null));
                 });
-                for (const n of i)
-                  n.startsWith("__relay_internal") &&
-                    (e[n] =
-                      !!t.params.providedVariables[n]?.get &&
-                      t.params.providedVariables[n]?.get());
+              } catch (a) {
+                s || ((s = !0), clearTimeout(o), n(null));
               }
-            } catch (n) {
-              console.error(n);
-            }
+            });
+            if (s || i.exports) return s || i.exports;
+          }
+          try {
+            return mt(e);
+          } catch (n) {
+            return null;
+          }
+        }
+        async function resolveDocIdFromModules(e) {
+          for (const t of queryModuleCandidates(e)) {
+            if (!wt(t)) continue;
+            const i = extractQueryDocId(await loadQueryModule(t));
+            if (i) return i;
+          }
+          return null;
+        }
+        function dt(e, t) {
+          for (const i of [`${t}.graphql`, `${t}$Parameters`])
+            if (wt(i))
+              try {
+                const t = mt(i);
+                if (t && t?.params?.providedVariables) {
+                  const i = Object.keys(t.params.providedVariables);
+                  Object.keys(e).forEach((t) => {
+                    t.startsWith("__relay_internal") && delete e[t];
+                  });
+                  for (const n of i)
+                    n.startsWith("__relay_internal") &&
+                      (e[n] =
+                        !!t.params.providedVariables[n]?.get &&
+                        t.params.providedVariables[n]?.get());
+                  return e;
+                }
+              } catch (n) {
+                console.error(n);
+              }
           return e;
         }
         async function ut(e, t, i) {
@@ -3896,11 +3943,18 @@
           }
         }
         async function ht(e, t, i) {
-          if (wt(`${e.queryName}.graphql`)) {
-            const t = mt(`${e.queryName}.graphql`);
-            if (t?.params?.id) return { ...e, docId: t.params.id };
+          const n = await resolveDocIdFromModules(e.queryName);
+          if (n) return { ...e, docId: n };
+          if (!e.preload || 0 === e.preload.length) {
+            if ("function" == typeof window.___xf(nt)?.loadModules) {
+              const t = await gt([`${e.queryName}$Parameters`], 3e3);
+              if (t) {
+                const i = await resolveDocIdFromModules(e.queryName);
+                if (i) return { ...e, docId: i };
+              }
+            }
+            return e;
           }
-          if (!e.preload || 0 === e.preload.length) return e;
           for (const o of e.preload) {
             const n = Array.isArray(o) ? o : [o];
             try {
@@ -3983,15 +4037,17 @@
               );
             }
           }
-          const n = mt(`${e.queryName}.graphql`);
-          return n?.params?.id ? { ...e, docId: n.params.id } : e;
+          const s = await resolveDocIdFromModules(e.queryName);
+          return s ? { ...e, docId: s } : e;
         }
         async function gt(e, t = 5e3) {
           return new Promise((i) => {
+            const s = window.___xf(nt);
+            if (!s || "function" != typeof s.loadModules) return i(!1);
             const n = setTimeout(() => {
               i(!1);
             }, t);
-            window.___xf(nt).loadModules(e, () => {
+            s.loadModules(e, () => {
               (clearTimeout(n), i(!0));
             });
           });
@@ -4028,13 +4084,13 @@
           }
         }
         function mt(e) {
-          const t = window.___xf(ot).modulesMap[e];
+          const t = window.___xf(ot)?.modulesMap?.[e];
           if (!t) throw new Error(`Module ${e} is not loaded`);
           const i = "require";
           return t.exports ? t.exports : window[i](e);
         }
         function wt(e) {
-          return !!window.___xf(ot).modulesMap[e];
+          return !!window.___xf(ot)?.modulesMap?.[e];
         }
         const yt = "PolarisConfig",
           xt = "createRelayChunkedResponseParser",
@@ -5165,7 +5221,7 @@
             }),
           });
         }
-        const yi = "1.1.4";
+        const yi = "1.1.5";
         function xi() {
           return i.jsxs(e.Space, {
             size: 8,
