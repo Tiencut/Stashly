@@ -3,8 +3,8 @@
   "name": "Stashly",
   "short_name": "Stashly",
   "description": "Bulk-download photos from Facebook albums, profiles, groups and the photo viewer — saved to a folder you choose.",
-  "version": "1.1.4",
-  "version_name": "1.1.4",
+  "version": "1.2.1",
+  "version_name": "1.2.1 Persistent Manager",
   "minimum_chrome_version": "103",
   "author": "Shahriar Ahmed",
   "homepage_url": "https://github.com/shahriar-ahmed-seam/Stashly",
@@ -18,7 +18,6 @@
   },
   "action": {
     "default_icon": "assets/icons/favicon-128.png",
-    "default_popup": "pages/popup/index.html",
     "default_title": "Stashly"
   },
   "options_page": "pages/options/index.html",
@@ -26,44 +25,17 @@
     "service_worker": "background/service-worker-loader.js",
     "type": "module"
   },
-  "content_scripts": [
-    {
-      "js": ["content/loader.js"],
-      "matches": [
-        "https://www.facebook.com/*",
-        "https://web.facebook.com/*"
-      ],
-      "run_at": "document_end"
-    }
-  ],
   "host_permissions": [
     "https://www.facebook.com/*",
-    "https://web.facebook.com/*"
+    "https://web.facebook.com/*",
+    "https://*.fbcdn.net/*",
+    "https://*.fbsbx.com/*"
   ],
   "permissions": [
     "scripting",
     "storage",
     "tabs",
-    "declarativeNetRequest",
-    "declarativeNetRequestWithHostAccess"
+    "downloads"
   ],
-  "incognito": "not_allowed",
-  "web_accessible_resources": [
-    {
-      "matches": [
-        "https://www.facebook.com/*",
-        "https://web.facebook.com/*"
-      ],
-      "resources": [
-        "injects/proxy.js",
-        "injects/vendors.js",
-        "injects/app.js",
-        "injects/app.css",
-        "content/bridge.js",
-        "content/constants.js",
-        "assets/img/aurora.jpg"
-      ],
-      "use_dynamic_url": false
-    }
-  ]
+  "incognito": "not_allowed"
 }

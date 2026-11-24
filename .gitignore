@@ -21,3 +21,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+# Local trace and backups
+.trace-mcp/
+*.bak

@@ -187,26 +187,37 @@ async function registerContentScripts() {
 }
 
 // ── Bootstrap ───────────────────────────────────────────────────────────────
-refreshCspRules();
-registerContentScripts();
-injectGlobalsIntoExistingTabs();
-
-chrome.runtime.onInstalled.addListener(() => {
-  refreshCspRules();
-  registerContentScripts();
-  injectGlobalsIntoExistingTabs();
-});
-chrome.runtime.onStartup.addListener(() => injectGlobalsIntoExistingTabs());
-
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (
-    tab?.url &&
-    (changeInfo.status === "loading" || changeInfo.status === "complete") &&
-    matchesAnyPattern(HOST_MATCHES, tab.url)
-  ) {
-    await injectGlobalsIntoTab(tabId);
+// Diagnostic-safe mode: do not modify Facebook's CSP, inject MAIN-world
+// hooks, seed globals, or register the proxy/app bundles. The previous build
+// caused Facebook's own Photos view to render an Error state.
+// Keep the storage message API active so the popup/options remain usable.
+async function disableFacebookInterception() {
+  try {
+    const registered = await chrome.scripting.getRegisteredContentScripts();
+    if (registered.length) {
+      await chrome.scripting.unregisterContentScripts({
+        ids: registered.map((script) => script.id),
+      });
+    }
+  } catch (err) {
+    console.warn("[Stashly] Could not unregister injected scripts", err);
   }
-});
+
+  try {
+    const rules = await chrome.declarativeNetRequest.getDynamicRules();
+    if (rules.length) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: rules.map((rule) => rule.id),
+      });
+    }
+  } catch (err) {
+    console.warn("[Stashly] Could not remove CSP rules", err);
+  }
+}
+
+disableFacebookInterception();
+chrome.runtime.onInstalled.addListener(disableFacebookInterception);
+chrome.runtime.onStartup.addListener(disableFacebookInterception);
 
 // ── 3. Storage helpers ──────────────────────────────────────────────────────
 function getStorage(key) {
@@ -314,4 +325,24 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       }),
     );
   return true; // keep the channel open for the async response
+});
+
+
+// Open a persistent manager tab instead of a short-lived toolbar popup.
+// The manager keeps working when the user switches to another browser tab.
+chrome.action.onClicked.addListener(async (sourceTab) => {
+  try {
+    if (sourceTab?.id && sourceTab.url && /^https:\/\/(www|web)\.facebook\.com\//.test(sourceTab.url)) {
+      await chrome.storage.local.set({ stashlyTargetTabId: sourceTab.id, stashlyTargetUrl: sourceTab.url });
+    }
+    const managerUrl = chrome.runtime.getURL("pages/manager/index.html");
+    const existing = await chrome.tabs.query({ url: managerUrl });
+    if (existing.length && existing[0].id) {
+      await chrome.tabs.update(existing[0].id, { active: true });
+      return;
+    }
+    await chrome.tabs.create({ url: managerUrl, active: true });
+  } catch (error) {
+    console.warn("[Stashly] Could not open manager tab", error);
+  }
 });

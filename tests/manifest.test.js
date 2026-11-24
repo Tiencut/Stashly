@@ -29,8 +29,7 @@ test("manifest requests only the permissions the code uses", () => {
     "scripting",
     "storage",
     "tabs",
-    "declarativeNetRequest",
-    "declarativeNetRequestWithHostAccess",
+    "downloads",
   ]);
   for (const p of manifest.permissions) {
     assert.ok(allowed.has(p), `unexpected permission: ${p}`);
@@ -39,7 +38,7 @@ test("manifest requests only the permissions the code uses", () => {
 
 test("host permissions are limited to Facebook", () => {
   for (const h of manifest.host_permissions) {
-    assert.match(h, /facebook\.com/);
+    assert.match(h, /facebook\.com|fbcdn\.net|fbsbx\.com/);
   }
 });
 
@@ -49,9 +48,9 @@ test("every file referenced by the manifest exists on disk", () => {
     manifest.action.default_popup,
     manifest.action.default_icon,
     manifest.options_page,
-    ...manifest.content_scripts.flatMap((c) => c.js),
+    ...(manifest.content_scripts || []).flatMap((c) => c.js),
     ...Object.values(manifest.icons),
-    ...manifest.web_accessible_resources.flatMap((w) => w.resources),
+    ...(manifest.web_accessible_resources || []).flatMap((w) => w.resources),
   ].filter(Boolean);
 
   for (const ref of refs) {
